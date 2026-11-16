@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Atrium\Reviews;
 
 use Atrium\Admin\Modules\Modules;
+use Atrium\Reviews\Console\RecountCommand;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +22,7 @@ final class ReviewsServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/atrium-reviews.php', 'atrium-reviews');
         $this->app->singleton(Reviews::class);
+        $this->app->singleton(ReviewCounters::class);
     }
 
     public function boot(): void
@@ -42,6 +44,10 @@ final class ReviewsServiceProvider extends ServiceProvider
         // Required but not installed: no table yet, so nothing on the site.
         if (! $this->app->make(Modules::class)->isInstalled(self::MODULE)) {
             return;
+        }
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([RecountCommand::class]);
         }
 
         if (config('atrium-reviews.routes', true)) {

@@ -127,8 +127,9 @@ final class ReviewsTest extends TestCase
         $review->update(['status' => ReviewStatus::Published]);
         $this->review(['rating' => 2], $phone);
 
-        $this->assertSame(['count' => 2, 'average' => 3.0], $reviews->summary($phone));
-        $this->assertSame(['count' => 0, 'average' => null], $reviews->summary());
+        $this->assertSame(['count' => 2, 'average' => 3.0, 'ratings' => [5 => 0, 4 => 1, 3 => 0, 2 => 1, 1 => 0]], $reviews->summary($phone));
+        $this->assertSame(0, $reviews->summary()['count']);
+        $this->assertNull($reviews->summary()['average']);
     }
 
     public function test_only_records_of_the_listed_modules_can_be_reviewed(): void

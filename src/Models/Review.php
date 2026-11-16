@@ -16,6 +16,7 @@ use Atrium\Admin\Modules\Soft;
 use Atrium\Admin\Traits\BelongsToSite;
 use Atrium\Admin\Traits\HasSoftRelations;
 use Atrium\Admin\Traits\InteractsWithAdmin;
+use Atrium\Reviews\ReviewCounters;
 use Atrium\Reviews\Reviews;
 use Atrium\Reviews\ReviewStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -65,6 +66,16 @@ class Review extends Model implements Administrable
         static::creating(static function (self $review): void {
             $review->posted_at ??= now();
         });
+
+        // The record's counter is counted again; mass updates in the
+        // database go past this, atrium:reviews:recount puts them right.
+        static::created(static fn (self $review) => app(ReviewCounters::class)->changed($review));
+        static::updated(static function (self $review): void {
+            if ($review->wasChanged(ReviewCounters::COUNTED)) {
+                app(ReviewCounters::class)->changed($review);
+            }
+        });
+        static::deleted(static fn (self $review) => app(ReviewCounters::class)->changed($review));
     }
 
     public static function getAdminLabel(): string

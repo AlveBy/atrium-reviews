@@ -6,9 +6,11 @@ namespace Atrium\Reviews;
 
 use Atrium\Admin\Contracts\Administrable;
 use Atrium\Admin\Modules\Soft;
+use Atrium\Admin\Support\Sites;
 use Atrium\Reviews\Models\Review;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Str;
 
 /**
@@ -106,23 +108,59 @@ final class Reviews
     }
 
     /**
-     * The average rating and the number of published reviews.
+     * The average rating, the number of published reviews and how many of
+     * each rating (5 first), from the counters: no reviews are counted here.
      *
-     * @return array{count:int,average:float|null}
+     * @return array{count:int,average:float|null,ratings:array<int,int>}
      */
     public function summary(?Model $record = null): array
     {
-        $row = Review::query()->published()->about($record)
-            ->toBase()
-            ->selectRaw('count(*) as aggregate_count, avg(rating) as aggregate_average')
-            ->first();
+        $type = $record === null ? '' : $record->getMorphClass();
+        $id = $record === null ? 0 : $record->getKey();
 
-        $count = (int) ($row->aggregate_count ?? 0);
+        return $this->toSummary($this->counters()->where('reviewable_type', $type)->where('reviewable_id', $id)->first());
+    }
 
-        return [
-            'count' => $count,
-            'average' => $count > 0 ? round((float) $row->aggregate_average, 1) : null,
-        ];
+    /**
+     * The summaries of many records in one query, for a list of products
+     * with their stars; keyed by key($record).
+     *
+     * @param  iterable<Model>  $records
+     * @return array<string,array{count:int,average:float|null,ratings:array<int,int>}>
+     */
+    public function summaries(iterable $records): array
+    {
+        $summaries = [];
+        $byType = [];
+
+        foreach ($records as $record) {
+            $summaries[$this->key($record)] = $this->toSummary(null);
+            $byType[$record->getMorphClass()][$record->getKey()] = $record;
+        }
+
+        if ($byType === []) {
+            return $summaries;
+        }
+
+        $rows = $this->counters()
+            ->where(static function (Builder $query) use ($byType): void {
+                foreach ($byType as $type => $records) {
+                    $query->orWhere(static fn (Builder $query) => $query->where('reviewable_type', $type)->whereIn('reviewable_id', array_keys($records)));
+                }
+            })
+            ->addSelect(['reviewable_type', 'reviewable_id'])
+            ->groupBy('reviewable_type', 'reviewable_id')
+            ->get();
+
+        foreach ($rows as $row) {
+            $record = $byType[$row->reviewable_type][(int) $row->reviewable_id] ?? null;
+
+            if ($record !== null) {
+                $summaries[$this->key($record)] = $this->toSummary($row);
+            }
+        }
+
+        return $summaries;
     }
 
     /**
@@ -183,6 +221,44 @@ final class Reviews
             ->orderByDesc('posted_at')->orderByDesc('id')
             ->limit($limit ?? (int) config('atrium-reviews.per_page', 10))
             ->get();
+    }
+
+    /**
+     * The counters summed up: of the current site once a request has said
+     * which one it is, of all sites otherwise (like the reviews themselves).
+     */
+    private function counters(): Builder
+    {
+        $sums = 'coalesce(sum(count), 0) as count, coalesce(sum(rating_sum), 0) as rating_sum';
+
+        foreach (range(1, 5) as $rating) {
+            $sums .= ", coalesce(sum(rating_$rating), 0) as rating_$rating";
+        }
+
+        $sites = app(Sites::class);
+
+        return (new Review)->getConnection()->table(ReviewCounters::TABLE)
+            ->selectRaw($sums)
+            ->when($sites->isResolved(), static fn (Builder $query) => $query->where('site_id', $sites->current()->id));
+    }
+
+    /**
+     * @return array{count:int,average:float|null,ratings:array<int,int>}
+     */
+    private function toSummary(?object $row): array
+    {
+        $count = (int) ($row->count ?? 0);
+        $ratings = [];
+
+        foreach ([5, 4, 3, 2, 1] as $rating) {
+            $ratings[$rating] = (int) ($row->{'rating_'.$rating} ?? 0);
+        }
+
+        return [
+            'count' => $count,
+            'average' => $count > 0 ? round((int) $row->rating_sum / $count, 1) : null,
+            'ratings' => $ratings,
+        ];
     }
 
     private function siteType(): string

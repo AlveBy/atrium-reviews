@@ -35,7 +35,24 @@ The theme then shows the reviews and the form under each record page of these mo
 Without `for` it shows the reviews of the site. For the numbers alone:
 
 ```php
-app(Atrium\Reviews\Reviews::class)->summary($product); // ['count' => 12, 'average' => 4.6]
+$reviews = app(Atrium\Reviews\Reviews::class);
+
+$reviews->summary($product);
+// ['count' => 12, 'average' => 4.6, 'ratings' => [5 => 9, 4 => 2, 3 => 1, 2 => 0, 1 => 0]]
+
+// A list of products with their stars: one query for all of them.
+$summaries = $reviews->summaries($products);
+$summaries[$reviews->key($product)]['average'];
+```
+
+## Counters
+
+The numbers are not counted on the page: `review_counters` keeps, per record and site, the number of published reviews, their rating sum and how many of each rating. A counter is never moved by one. When a review is created, deleted, published or rejected, re-rated or moved to another record, its record is counted again from `reviews` once the change is committed, with the counter row locked (`SELECT … FOR UPDATE`). Reviews of one record sent at the same moment are all counted, and a review moved to another record updates both. Editing the text or the name does not touch the counter.
+
+Reviews imported or changed in the database directly go past the model, so count everything again:
+
+```bash
+php artisan atrium:reviews:recount
 ```
 
 ## How the link to another module works
