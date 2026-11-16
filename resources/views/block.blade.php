@@ -37,6 +37,9 @@
         .reviews-form fieldset { border: 0; margin: 0; padding: 0; }
         .reviews-rating { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
         .reviews-rating label { font-weight: 400; display: inline-flex; gap: .35rem; align-items: center; }
+        .reviews-captcha { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+        .reviews-captcha label { margin: 0; }
+        .reviews-captcha input[type="text"] { width: 5rem; }
         .reviews-form button { justify-self: start; font: inherit; padding: .55rem 1.2rem; border: 0; border-radius: .4rem; background: var(--accent, #1d4ed8); color: var(--bg, #fff); cursor: pointer; }
         .reviews-error { color: #b42318; margin: .25rem 0 0; }
         :root[data-theme="dark"] .reviews-error { color: #ff9b8f; }
@@ -118,6 +121,13 @@
                 <p class="reviews-error">{{ $reviewErrors->first('text') ?: $reviewErrors->first('about') }}</p>
             @endif
         </div>
+
+        @if (config('atrium-reviews.captcha', true))
+            <x-atrium::captcha class="reviews-captcha" />
+            @if ($mine && $reviewErrors->has('captcha'))
+                <p class="reviews-error">{{ $reviewErrors->first('captcha') }}</p>
+            @endif
+        @endif
 
         <p class="reviews-note">{{ __('atrium-reviews::reviews.form.moderation') }}</p>
         <button type="submit">{{ __('atrium-reviews::reviews.form.submit') }}</button>

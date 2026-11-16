@@ -40,6 +40,12 @@ return [
     ],
 
     /*
+    | Ask the site's captcha in the form (atrium.captcha.driver in
+    | config/atrium.php: image, recaptcha or none). False: never here.
+    */
+    'captcha' => true,
+
+    /*
     | Show the reviews and the form under the record pages of the public
     | theme (alveby/atrium-theme) for the models above.
     */

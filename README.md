@@ -69,6 +69,7 @@ Reviews does not require the reviewed module's package and the reviewed module k
 - A hidden field that people do not see and bots fill in: such a review is thanked for and dropped.
 - At most 3 reviews from one address in 10 minutes (`rate_limit`).
 - Nothing reaches the site before a moderator publishes it.
+- The site's captcha, when one is on (`ATRIUM_CAPTCHA=image` for the built-in picture, `recaptcha` for Google reCAPTCHA; see Atrium's configuration). `captcha => false` leaves it out of this form.
 
 ## Settings
 
@@ -80,6 +81,7 @@ Reviews does not require the reviewed module's package and the reviewed module k
 | `site_type` | `Organization` | the schema.org type of the site's own rating |
 | `per_page` | `10` | reviews on a page |
 | `rate_limit` | 3 in 10 minutes | reviews from one address |
+| `captcha` | `true` | ask the site's captcha in the form |
 | `theme` | `true` | show the reviews under the theme's record pages |
 
 The templates can be copied and changed with `php artisan vendor:publish --tag=atrium-reviews-views`. The interface speaks the 15 languages of the admin: English and Russian are written by hand, the others are machine translations.

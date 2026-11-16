@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Atrium\Reviews\Tests;
 
+use Atrium\Admin\Captcha\CaptchaManager;
 use Atrium\Admin\Models\Site;
 use Atrium\Admin\Modules\Module;
 use Atrium\Admin\Modules\Modules;
@@ -20,6 +21,7 @@ use Atrium\Reviews\Tests\Fixtures\Article;
 use Atrium\Reviews\Tests\Fixtures\Product;
 use Atrium\Theme\ThemeServiceProvider;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Crypt;
 
 final class ReviewsTest extends TestCase
 {
@@ -237,6 +239,31 @@ final class ReviewsTest extends TestCase
 
         $this->assertStringContainsString('Fine', $html);
         $this->assertSame('https://shop.test/phone', $this->jsonLd($html)['url']);
+    }
+
+    public function test_the_site_captcha_guards_the_form(): void
+    {
+        config(['atrium.captcha.driver' => 'image']);
+        app(CaptchaManager::class)->forgetDrivers();
+
+        $page = (string) $this->get('/reviews')->assertOk()->assertSee('name="captcha_token"', false)->getContent();
+        $form = ['author_name' => 'Pat', 'rating' => 5, 'text' => 'Fine'];
+
+        $this->from('/reviews')->post('/reviews', $form)->assertSessionHasErrors(['captcha'], null, 'reviews');
+        $this->get('/reviews')->assertSee('The answer to the check is wrong. Try the new one.')->assertSee('value="Pat"', false);
+        $this->assertSame(0, Review::query()->count());
+
+        $this->assertSame(1, preg_match('/name="captcha_token" value="([^"]+)"/', $page, $match));
+        $token = html_entity_decode($match[1]);
+
+        $this->from('/reviews')->post('/reviews', $form + ['captcha_token' => $token, 'captcha' => (string) Crypt::decrypt($token)['a']])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(1, Review::query()->count());
+
+        config(['atrium-reviews.captcha' => false]);
+        $this->get('/reviews')->assertDontSee('name="captcha_token"', false);
+        $this->from('/reviews')->post('/reviews', $form)->assertSessionHasNoErrors();
+        $this->assertSame(2, Review::query()->count());
     }
 
     public function test_errors_come_back_into_the_form(): void
