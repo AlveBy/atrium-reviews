@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace Atrium\Reviews;
 
 use Atrium\Admin\Contracts\Administrable;
+use Atrium\Admin\Modules\Soft;
 use Atrium\Reviews\Models\Review;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
 
 /**
  * What can be reviewed, the rating of a record and its schema.org markup.
  *
- * A review keeps the reviewed record as a type and an id, with no foreign
- * key and no Composer dependency on its module: a module that is removed
- * leaves its reviews in place, they just lose their record.
+ * A review keeps the reviewed record as a type and an id (a soft morphTo,
+ * Atrium\Admin\Traits\HasSoftRelations), with no foreign key and no
+ * Composer dependency on its module: a module that is removed leaves its
+ * reviews in place, they just lose their record.
  */
 final class Reviews
 {
@@ -24,8 +25,8 @@ final class Reviews
     private const SCHEMA_TYPE = '/^[A-Za-z]+$/';
 
     /**
-     * The models that take reviews and their schema.org type; models that
-     * are not installed are left out.
+     * The models that take reviews and their schema.org type; models whose
+     * module is not installed are left out.
      *
      * @return array<class-string<Model>,string>
      */
@@ -38,7 +39,7 @@ final class Reviews
                 [$class, $type] = [$type, 'Thing'];
             }
 
-            if (is_string($class) && class_exists($class) && is_subclass_of($class, Model::class)) {
+            if (is_string($class) && Soft::available($class) && is_subclass_of($class, Model::class)) {
                 $models[$class] = is_string($type) && preg_match(self::SCHEMA_TYPE, $type) ? $type : 'Thing';
             }
         }
@@ -82,34 +83,19 @@ final class Reviews
     }
 
     /**
-     * The record behind a stored type and id; null for the site, for a
-     * deleted record and for a module that is no longer installed.
-     */
-    public function find(?string $type, ?int $id): ?Model
-    {
-        $class = $this->modelClass($type);
-
-        if ($class === null || $id === null) {
-            return null;
-        }
-
-        return $class::query()->find($id);
-    }
-
-    /**
      * "Products: Phone X" for the admin list; a missing record keeps its
      * type and id, so an editor sees what the review was about.
      */
-    public function describe(?string $type, ?int $id): string
+    public function describe(Review $review): string
     {
-        if ($type === null) {
+        if ($review->reviewable_type === null) {
             return __('atrium-reviews::reviews.site');
         }
 
-        $record = $this->find($type, $id);
+        $record = $review->reviewable;
 
         if ($record === null) {
-            return __('atrium-reviews::reviews.missing', ['type' => class_basename($type), 'id' => (string) $id]);
+            return __('atrium-reviews::reviews.missing', ['type' => class_basename($review->reviewable_type), 'id' => (string) $review->reviewable_id]);
         }
 
         $title = $record instanceof Administrable && method_exists($record, 'getAdminTitle')
@@ -117,22 +103,6 @@ final class Reviews
             : '#'.$record->getKey();
 
         return $this->moduleLabel($record::class).': '.$title;
-    }
-
-    /**
-     * The choice of a module in the admin form, by the value a review keeps.
-     *
-     * @return array<string,string>
-     */
-    public function typeOptions(): array
-    {
-        $options = [];
-
-        foreach (array_keys($this->models()) as $class) {
-            $options[(new $class)->getMorphClass()] = $this->moduleLabel($class);
-        }
-
-        return $options;
     }
 
     /**
@@ -220,20 +190,6 @@ final class Reviews
         $type = config('atrium-reviews.site_type', 'Organization');
 
         return is_string($type) && preg_match(self::SCHEMA_TYPE, $type) ? $type : 'Organization';
-    }
-
-    /**
-     * @return class-string<Model>|null
-     */
-    private function modelClass(?string $type): ?string
-    {
-        if ($type === null || $type === '') {
-            return null;
-        }
-
-        $class = Relation::getMorphedModel($type) ?? $type;
-
-        return class_exists($class) && is_subclass_of($class, Model::class) ? $class : null;
     }
 
     private function alias(string $class): string

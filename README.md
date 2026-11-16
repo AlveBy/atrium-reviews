@@ -6,10 +6,10 @@ Reviews for [Atrium](https://github.com/AlveBy/atrium): a 1–5 rating, the auth
 
 ```bash
 composer require alveby/atrium-reviews
-php artisan migrate
+php artisan atrium:module:install alveby/atrium-reviews
 ```
 
-"Reviews" appears in the admin menu. A new review waits there as **New** until a moderator sets it to **Published** (shown on the site) or **Rejected**.
+The second command runs the migrations and lists the module in `config/atrium.php` → `modules`. "Reviews" appears in the admin menu. `php artisan atrium:module:remove alveby/atrium-reviews` takes it out and asks whether to keep the reviews. A new review waits there as **New** until a moderator sets it to **Published** (shown on the site) or **Rejected**.
 
 ## Reviews of the site
 
@@ -40,10 +40,12 @@ app(Atrium\Reviews\Reviews::class)->summary($product); // ['count' => 12, 'avera
 
 ## How the link to another module works
 
-Reviews does not require the reviewed module's package and the reviewed module knows nothing about reviews. A review keeps the record as `reviewable_type` (the model's morph class) and `reviewable_id`, with no foreign key:
+Reviews does not require the reviewed module's package and the reviewed module knows nothing about reviews. A review keeps the record as `reviewable_type` (the model class) and `reviewable_id`, with no foreign key, and reads it through Atrium's soft `morphTo` (`HasSoftRelations::softMorphTo()`):
 
-- the public form names the record by the module's key and id (`products:12`), never by a class, and only modules from `models` are accepted;
-- when a module is removed or renamed, its reviews stay; the admin shows them as "Store #7 (removed)" and `$review->subject()` returns `null` instead of failing.
+- `$review->reviewable` is the product, the page, the store; for a review of the site it is `null`;
+- when the reviewed module is removed (`atrium:module:remove`) or its package is gone, its reviews stay; `$review->reviewable` is `null` instead of failing, also with `with('reviewable')`, and the admin shows them as "Store #7 (removed)";
+- the public form names the record by the module's key and id (`products:12`), never by a class, and only modules from `models` that are installed are accepted;
+- in the admin a review can be moved to a record of any module of the panel.
 
 ## Spam
 

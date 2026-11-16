@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Atrium\Reviews\Tests;
 
 use Atrium\Admin\Models\Site;
+use Atrium\Admin\Modules\Module;
+use Atrium\Admin\Modules\Modules;
+use Atrium\Admin\Resources\ResourceRegistry;
 use Atrium\Reviews\Models\Review;
 use Atrium\Reviews\Reviews;
 use Atrium\Reviews\ReviewStatus;
@@ -17,8 +20,8 @@ final class ReviewsTest extends TestCase
 {
     public function test_the_module_is_in_the_admin_with_its_routes(): void
     {
-        $this->assertContains(Review::class, config('atrium.resources'));
-        $this->assertContains(Product::class, config('atrium.resources'));
+        $this->assertContains(Review::class, app(ResourceRegistry::class)->all());
+        $this->assertContains('atrium-reviews::theme-record', config('atrium-theme.record_views'));
         $this->assertTrue(app('router')->has('admin.reviews.index'));
         $this->assertTrue(app('router')->has('atrium.reviews.index'));
         $this->assertTrue(app('router')->has('atrium.reviews.store'));
@@ -118,7 +121,7 @@ final class ReviewsTest extends TestCase
         $review = Review::query()->sole();
         $this->assertSame($phone->getMorphClass(), $review->reviewable_type);
         $this->assertSame($phone->id, $review->reviewable_id);
-        $this->assertTrue($phone->is($review->subject()));
+        $this->assertTrue($phone->is($review->reviewable));
         $this->assertSame('Products: Phone', $review->subject_label);
 
         $review->update(['status' => ReviewStatus::Published]);
@@ -143,19 +146,28 @@ final class ReviewsTest extends TestCase
 
     public function test_reviews_outlive_the_module_they_are_about(): void
     {
-        $review = $this->review(['author_name' => 'Old', 'rating' => 5]);
-        $review->forceFill(['reviewable_type' => 'Vendor\\Removed\\Store', 'reviewable_id' => 7])->save();
+        $phone = Product::query()->create(['name' => 'Phone', 'code' => 'phone']);
+        $about = $this->review(['author_name' => 'Ivan'], $phone);
+        $gone = $this->review(['author_name' => 'Old']);
+        $gone->forceFill(['reviewable_type' => 'Vendor\\Removed\\Store', 'reviewable_id' => 7])->save();
 
-        $review->refresh();
-        $this->assertNull($review->subject());
-        $this->assertSame('Store #7 (removed)', $review->subject_label);
+        // The shop module is required but taken out of the installed ones.
+        app(Modules::class)->add(new Module('acme/atrium-shop', resources: [Product::class]));
+
+        $this->assertNull($about->refresh()->reviewable);
+        $this->assertNull($gone->refresh()->reviewable);
+        $this->assertSame('Product #'.$phone->id.' (removed)', $about->subject_label);
+        $this->assertSame('Store #7 (removed)', $gone->subject_label);
+        $this->assertSame([], app(Reviews::class)->models());
 
         $this->actingAs($this->admin(), 'admin')
             ->get(route('admin.reviews.index'))
             ->assertOk()
-            ->assertSee('Store #7 (removed)');
+            ->assertSee('Store #7 (removed)')
+            ->assertSee('Product #'.$phone->id.' (removed)');
 
-        $this->get('/reviews')->assertOk()->assertDontSee('Old');
+        $this->from('/reviews')->post('/reviews', ['author_name' => 'Eve', 'rating' => 5, 'text' => 'Hi', 'about' => 'products:'.$phone->id])
+            ->assertSessionHasErrors(['about'], null, 'reviews');
     }
 
     public function test_a_moderator_publishes_a_review_in_the_admin(): void

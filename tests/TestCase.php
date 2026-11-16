@@ -45,8 +45,10 @@ abstract class TestCase extends Orchestra
         $config->set('atrium.demo', false);
         $config->set('atrium.auth.two_factor.enabled', false);
         $config->set('atrium.dashboard.timings.enabled', false);
-        // The reviews provider has added its model already.
-        $config->set('atrium.resources', [...(array) $config->get('atrium.resources', []), Product::class]);
+        // Installed, as atrium:module:install leaves it: the model and the
+        // migrations come from the manifest in composer.json.
+        $config->set('atrium.modules', [ReviewsServiceProvider::MODULE]);
+        $config->set('atrium.resources', [Product::class]);
         $config->set('atrium.public_urls', [
             Product::class => ['prefix' => 'products'],
             Article::class => ['prefix' => 'articles'],

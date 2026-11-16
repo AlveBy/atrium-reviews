@@ -40,6 +40,12 @@
         }
     },
     "extra": {
+        "atrium": {
+            "resources": [
+                "Atrium\\Reviews\\Models\\Review"
+            ],
+            "migrations": "database/migrations"
+        },
         "laravel": {
             "providers": [
                 "Atrium\\Reviews\\ReviewsServiceProvider"

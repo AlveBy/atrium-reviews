@@ -12,12 +12,15 @@ use Atrium\Admin\Fields\NumberField;
 use Atrium\Admin\Fields\SelectField;
 use Atrium\Admin\Fields\TextareaField;
 use Atrium\Admin\Fields\TextField;
+use Atrium\Admin\Modules\Soft;
 use Atrium\Admin\Traits\BelongsToSite;
+use Atrium\Admin\Traits\HasSoftRelations;
 use Atrium\Admin\Traits\InteractsWithAdmin;
 use Atrium\Reviews\Reviews;
 use Atrium\Reviews\ReviewStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -32,10 +35,11 @@ use Illuminate\Support\Carbon;
  * @property string $text
  * @property ReviewStatus $status
  * @property Carbon|null $posted_at
+ * @property Model|null $reviewable
  */
 class Review extends Model implements Administrable
 {
-    use BelongsToSite, InteractsWithAdmin;
+    use BelongsToSite, HasSoftRelations, InteractsWithAdmin;
 
     protected $table = 'reviews';
 
@@ -95,7 +99,7 @@ class Review extends Model implements Administrable
             DateTimeField::make('posted_at')->label(__('atrium-reviews::reviews.fields.posted_at')),
             TextareaField::make('text')->label(__('atrium-reviews::reviews.fields.text'))->required(),
             SelectField::make('reviewable_type')->label(__('atrium-reviews::reviews.fields.subject_type'))
-                ->options(app(Reviews::class)->typeOptions())
+                ->options(array_diff_key(Soft::targets(), [self::class => true]))
                 ->placeholder(__('atrium-reviews::reviews.site')),
             NumberField::make('reviewable_id')->label(__('atrium-reviews::reviews.fields.subject_id'))
                 ->min(1)->rules(['required_with:reviewable_type', 'integer']),
@@ -118,6 +122,30 @@ class Review extends Model implements Administrable
     public function getAdminTitle(): string
     {
         return $this->author_name;
+    }
+
+    /**
+     * The reviewed record: a product, a page, a store. Null for the site, for
+     * a deleted record and for a module that is no longer installed.
+     *
+     * @return MorphTo<covariant Model,$this>
+     */
+    public function reviewable(): MorphTo
+    {
+        return $this->softMorphTo();
+    }
+
+    /**
+     * The list shows what each review is about.
+     *
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public function scopeAdminList(Builder $query): Builder
+    {
+        return $query->with('reviewable');
     }
 
     /**
@@ -160,15 +188,6 @@ class Review extends Model implements Administrable
         return $query->where('reviewable_type', $record->getMorphClass())->where('reviewable_id', $record->getKey());
     }
 
-    /**
-     * The reviewed record, or null for the site, for a record that is gone
-     * and for a module that is no longer installed.
-     */
-    public function subject(): ?Model
-    {
-        return app(Reviews::class)->find($this->reviewable_type, $this->reviewable_id);
-    }
-
     public function getStatusLabelAttribute(): string
     {
         return $this->status->label();
@@ -176,6 +195,6 @@ class Review extends Model implements Administrable
 
     public function getSubjectLabelAttribute(): string
     {
-        return app(Reviews::class)->describe($this->reviewable_type, $this->reviewable_id);
+        return app(Reviews::class)->describe($this);
     }
 }
