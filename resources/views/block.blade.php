@@ -1,4 +1,8 @@
 {{--
+    This file is part of Atrium (https://github.com/AlveBy/atrium).
+    Copyright (c) 2026 AlveBy. Licensed under the MIT License, see LICENSE.
+--}}
+{{--
     The reviews of one record (or of the site when $record is null): the
     rating, the newest published reviews, the form and the schema.org
     markup. $items may be a paginator; without it the newest are shown.

@@ -1,3 +1,7 @@
+{{--
+    This file is part of Atrium (https://github.com/AlveBy/atrium).
+    Copyright (c) 2026 AlveBy. Licensed under the MIT License, see LICENSE.
+--}}
 {{-- The reviews of the site: in the public theme's frame when it is installed. --}}
 @extends(view()->exists('atrium-theme::layout') ? 'atrium-theme::layout' : 'atrium-reviews::layout', [
     'metaTitle' => __('atrium-reviews::reviews.title'),
