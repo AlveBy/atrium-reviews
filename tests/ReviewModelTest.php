@@ -14,6 +14,7 @@ use Atrium\Reviews\Models\Review;
 use Atrium\Reviews\ReviewStatus;
 use Atrium\Reviews\Tests\Fixtures\Article;
 use Atrium\Reviews\Tests\Fixtures\Product;
+use Atrium\Reviews\Tests\Fixtures\Titled;
 use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -127,6 +128,22 @@ final class ReviewModelTest extends TestCase
         $this->assertSame('Published', $this->review()->getStatusLabelAttribute());
     }
 
+    public function test_a_record_outside_the_panel_is_named_by_its_id_even_with_a_title_of_its_own(): void
+    {
+        $titled = Titled::query()->create(['name' => 'News', 'code' => 'news']);
+
+        $this->assertSame('Titled: #'.$titled->id, $this->review([], $titled)->getSubjectLabelAttribute());
+    }
+
+    public function test_a_record_that_is_gone_keeps_its_type_and_id(): void
+    {
+        $article = Article::query()->create(['name' => 'News', 'code' => 'news']);
+        $review = $this->review([], $article);
+        $article->delete();
+
+        $this->assertSame('Article #'.$article->id.' (removed)', $review->fresh()?->getSubjectLabelAttribute());
+    }
+
     /**
      * @return array<string,array{0:ReviewStatus,1:string}>
      */
@@ -171,7 +188,7 @@ final class ReviewModelTest extends TestCase
     /**
      * @param  array<string,mixed>  $attributes
      */
-    private function review(array $attributes = [], Product|Article|null $about = null): Review
+    private function review(array $attributes = [], Product|Article|Titled|null $about = null): Review
     {
         $review = new Review(['author_name' => 'Someone', 'rating' => 5, 'text' => 'Text', 'status' => ReviewStatus::Published, ...$attributes]);
 

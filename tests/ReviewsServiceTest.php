@@ -132,6 +132,17 @@ final class ReviewsServiceTest extends TestCase
         $this->assertSame([], DB::getQueryLog());
     }
 
+    public function test_the_number_of_latest_reviews_may_come_from_the_config_as_text(): void
+    {
+        foreach (range(1, 4) as $i) {
+            $this->review(['text' => "Text {$i}"]);
+        }
+
+        config(['atrium-reviews.per_page' => '3']);
+
+        $this->assertCount(3, app(Reviews::class)->latest());
+    }
+
     public function test_the_markup_of_a_record_with_its_reviews(): void
     {
         $phone = Product::query()->create(['name' => 'Phone', 'code' => 'phone']);

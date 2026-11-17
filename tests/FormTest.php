@@ -213,6 +213,33 @@ final class FormTest extends TestCase
         $this->assertArrayNotHasKey('website', session()->getOldInput());
     }
 
+    public function test_the_refusal_counts_whole_minutes_as_they_are(): void
+    {
+        $this->freezeSecond();
+        config(['atrium-reviews.rate_limit' => ['attempts' => 1, 'minutes' => 2]]);
+        $this->from('/reviews')->post('/reviews', self::FORM)->assertSessionHasNoErrors();
+
+        // 120 seconds are left: two minutes exactly.
+        $this->from('/reviews')->post('/reviews', self::FORM);
+
+        $this->assertSame(
+            'Too many reviews from your address. Try again in 2 min.',
+            session('errors')->getBag('reviews')->first('text'),
+        );
+    }
+
+    public function test_the_page_is_titled_by_the_site_then_by_the_app_and_then_by_nothing(): void
+    {
+        $this->get('/reviews')->assertViewHas('siteTitle', Site::query()->firstOrFail()->name);
+
+        Site::query()->update(['name' => '']);
+        app(Sites::class)->flush();
+        $this->get('/reviews')->assertViewHas('siteTitle', 'Demo shop');
+
+        config(['app.name' => null]);
+        $this->get('/reviews')->assertViewHas('siteTitle', '');
+    }
+
     public function test_a_refused_review_keeps_the_form_but_not_the_hidden_fields(): void
     {
         config(['atrium-reviews.rate_limit' => ['attempts' => 1, 'minutes' => 1]]);
