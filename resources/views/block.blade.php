@@ -14,7 +14,8 @@
     $url ??= null;
     $items ??= $reviewsService->latest($record);
     $summary = $reviewsService->summary($record);
-    $jsonLd = $reviewsService->jsonLd($record, $name, $url, $items);
+    // Off when the SEO module puts the rating into the page's own graph.
+    $jsonLd = ($withJsonLd ?? true) ? $reviewsService->jsonLd($record, $name, $url, $items) : null;
     $reviewErrors = (session('errors') ?? new \Illuminate\Support\ViewErrorBag)->getBag('reviews');
     $about = $record === null ? '' : $reviewsService->key($record);
     // Old input belongs to the form it came from when a page shows two.
