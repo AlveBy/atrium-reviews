@@ -15,6 +15,7 @@ use Atrium\Reviews\ReviewCounters;
 use Atrium\Reviews\Reviews;
 use Atrium\Reviews\ReviewStatus;
 use Atrium\Reviews\Tests\Fixtures\Product;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class CountersTest extends TestCase
@@ -119,6 +120,51 @@ final class CountersTest extends TestCase
 
         $this->assertSame(['count' => 2, 'average' => 2.0], array_slice(app(Reviews::class)->summary($phone), 0, 2));
         $this->assertSame(1.0, app(Reviews::class)->summary()['average']);
+    }
+
+    public function test_the_counter_keeps_every_rating_apart(): void
+    {
+        $phone = $this->product('phone');
+
+        foreach ([5, 5, 4, 3, 2, 1] as $rating) {
+            $this->review($rating, $phone);
+        }
+
+        $row = DB::table(ReviewCounters::TABLE)->where('reviewable_type', $phone->getMorphClass())->sole();
+        $this->assertSame([6, 20, 2, 1, 1, 1, 1], array_map('intval', [$row->count, $row->rating_sum, $row->rating_5, $row->rating_4, $row->rating_3, $row->rating_2, $row->rating_1]));
+
+        $this->artisan('atrium:reviews:recount')->assertSuccessful();
+
+        $row = DB::table(ReviewCounters::TABLE)->where('reviewable_type', $phone->getMorphClass())->sole();
+        $this->assertSame([6, 20, 2, 1, 1, 1, 1], array_map('intval', [$row->count, $row->rating_sum, $row->rating_5, $row->rating_4, $row->rating_3, $row->rating_2, $row->rating_1]));
+        $this->assertNotNull($row->created_at);
+        $this->assertNotNull($row->updated_at);
+    }
+
+    public function test_a_counter_is_dated_when_made_and_when_counted_again(): void
+    {
+        $this->travelTo(Carbon::parse('2026-01-01 10:00:00'));
+        $phone = $this->product('phone');
+        $this->review(5, $phone);
+
+        $this->travelTo(Carbon::parse('2026-01-02 10:00:00'));
+        $this->review(3, $phone);
+
+        $row = DB::table(ReviewCounters::TABLE)->where('reviewable_type', $phone->getMorphClass())->sole();
+        $this->assertSame('2026-01-01 10:00:00', Carbon::parse($row->created_at)->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-01-02 10:00:00', Carbon::parse($row->updated_at)->format('Y-m-d H:i:s'));
+    }
+
+    public function test_reviews_of_no_site_are_counted_on_their_own(): void
+    {
+        $this->review(4);
+        DB::table('reviews')->insert(['author_name' => 'Imported', 'rating' => 2, 'text' => 'Old', 'status' => 'published', 'site_id' => null]);
+
+        app(ReviewCounters::class)->recount(['site_id' => 0, 'reviewable_type' => '', 'reviewable_id' => 0]);
+
+        $row = DB::table(ReviewCounters::TABLE)->where('site_id', 0)->where('reviewable_type', '')->sole();
+        $this->assertSame([1, 2, 1], array_map('intval', [$row->count, $row->rating_sum, $row->rating_2]));
+        $this->assertNotNull($row->created_at);
     }
 
     private function product(string $code): Product

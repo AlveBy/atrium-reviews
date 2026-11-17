@@ -17,6 +17,7 @@ use Atrium\Reviews\Tests\Fixtures\Article;
 use Atrium\Reviews\Tests\Fixtures\Product;
 use Atrium\Theme\ThemeServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\ServiceProvider as InertiaServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -25,6 +26,22 @@ use Tighten\Ziggy\ZiggyServiceProvider;
 abstract class TestCase extends Orchestra
 {
     use RefreshDatabase;
+
+    /**
+     * On MySQL and PostgreSQL the whole suite shares one database: each
+     * class migrates it again with the modules it installs.
+     */
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+        RefreshDatabaseState::$migrated = false;
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        RefreshDatabaseState::$migrated = false;
+        parent::tearDownAfterClass();
+    }
 
     protected function getPackageProviders($app): array
     {
