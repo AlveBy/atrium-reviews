@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Atrium\Reviews;
 
+use Atrium\Admin\Cache\Card;
+use Atrium\Admin\Cache\RecordCache;
 use Atrium\Admin\Contracts\Administrable;
 use Atrium\Admin\Modules\Soft;
 use Atrium\Admin\Support\Sites;
@@ -123,7 +125,10 @@ final class Reviews
         $type = $record === null ? '' : $record->getMorphClass();
         $id = $record === null ? 0 : $record->getKey();
 
-        return $this->toSummary($this->counters()->where('reviewable_type', $type)->where('reviewable_id', $id)->first());
+        // The counters change with the reviews: kept until a review is saved.
+        $row = app(RecordCache::class)->remember(Review::class, 'summary:'.$type.':'.$id, fn (): ?array => (array) ($this->counters()->where('reviewable_type', $type)->where('reviewable_id', $id)->first() ?? []) ?: null);
+
+        return $this->toSummary($row === null ? null : (object) $row);
     }
 
     /**
@@ -223,10 +228,12 @@ final class Reviews
      */
     public function latest(?Model $record = null, ?int $limit = null): Collection
     {
-        return Review::query()->published()->about($record)
+        $cards = Review::query()->published()->about($record)
             ->orderByDesc('posted_at')->orderByDesc('id')
             ->limit($limit ?? config('atrium-reviews.per_page', 10))
-            ->get();
+            ->cachedCards();
+
+        return (new Review)->newCollection(array_map(static fn (Card $card): Review => $card->model(Review::class), $cards));
     }
 
     /**

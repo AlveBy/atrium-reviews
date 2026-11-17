@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Atrium\Reviews;
 
+use Atrium\Admin\Cache\RecordCache;
 use Atrium\Reviews\Models\Review;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Builder;
@@ -107,6 +108,9 @@ final class ReviewCounters
                 ])->values()->all());
             }
         });
+
+        // Reviews changed behind Eloquent's back: what the cache shows of them is off too.
+        app(RecordCache::class)->flushClass(Review::class);
 
         return $rows->count();
     }

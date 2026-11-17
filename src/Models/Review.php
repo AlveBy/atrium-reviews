@@ -9,9 +9,11 @@ declare(strict_types=1);
 
 namespace Atrium\Reviews\Models;
 
+use Atrium\Admin\Cache\CachesRecords;
 use Atrium\Admin\Columns\DateColumn;
 use Atrium\Admin\Columns\TextColumn;
 use Atrium\Admin\Contracts\Administrable;
+use Atrium\Admin\Contracts\Cacheable;
 use Atrium\Admin\Fields\DateTimeField;
 use Atrium\Admin\Fields\NumberField;
 use Atrium\Admin\Fields\SelectField;
@@ -44,9 +46,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $posted_at
  * @property Model|null $reviewable
  */
-class Review extends Model implements Administrable
+class Review extends Model implements Administrable, Cacheable
 {
-    use BelongsToSite, HasSoftRelations, InteractsWithAdmin;
+    use BelongsToSite, CachesRecords, HasSoftRelations, InteractsWithAdmin;
 
     protected $table = 'reviews';
 
