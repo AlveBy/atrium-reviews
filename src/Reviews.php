@@ -225,7 +225,7 @@ final class Reviews
     {
         return Review::query()->published()->about($record)
             ->orderByDesc('posted_at')->orderByDesc('id')
-            ->limit($limit ?? (int) config('atrium-reviews.per_page', 10))
+            ->limit($limit ?? config('atrium-reviews.per_page', 10))
             ->get();
     }
 
