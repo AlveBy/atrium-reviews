@@ -79,9 +79,10 @@ final class ReviewController extends Controller
         $record = null;
 
         $validator->after(function ($validator) use ($request, &$record): void {
-            $about = (string) $request->input('about', '');
+            $about = $request->input('about', '');
 
-            if ($about !== '' && ($record = $this->reviews->resolve($about)) === null) {
+            // Something that is not text has been refused by the rules above.
+            if (is_string($about) && $about !== '' && ($record = $this->reviews->resolve($about)) === null) {
                 $validator->errors()->add('about', __('atrium-reviews::reviews.form.unknown'));
             }
         });

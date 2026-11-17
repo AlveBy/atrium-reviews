@@ -59,6 +59,7 @@ final class FormTest extends TestCase
             'Hebrew, right to left' => [['author_name' => 'נועה', 'text' => 'חנות נהדרת'] + self::FORM, null],
             'emoji' => [['text' => 'Great 👍'] + self::FORM, null],
             'about too long' => [['about' => 'products:'.str_repeat('1', 300)] + self::FORM, 'about'],
+            'about a list' => [['about' => ['products:1']] + self::FORM, 'about'],
         ];
     }
 
