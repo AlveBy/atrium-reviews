@@ -237,7 +237,7 @@ final class FormTest extends TestCase
         $this->get('/reviews')->assertViewHas('siteTitle', 'Demo shop');
 
         config(['app.name' => null]);
-        $this->get('/reviews')->assertViewHas('siteTitle', '');
+        $this->get('/reviews')->assertViewHas('siteTitle', static fn (mixed $title): bool => $title === '');
     }
 
     public function test_a_refused_review_keeps_the_form_but_not_the_hidden_fields(): void
