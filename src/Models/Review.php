@@ -27,6 +27,7 @@ use Atrium\Reviews\ReviewStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 /**
@@ -115,7 +116,7 @@ class Review extends Model implements Administrable
             DateTimeField::make('posted_at')->label(__('atrium-reviews::reviews.fields.posted_at')),
             TextareaField::make('text')->label(__('atrium-reviews::reviews.fields.text'))->required(),
             SelectField::make('reviewable_type')->label(__('atrium-reviews::reviews.fields.subject_type'))
-                ->options(array_diff_key(Soft::targets(), [self::class => true]))
+                ->options(Arr::except(Soft::targets(), [self::class]))
                 ->placeholder(__('atrium-reviews::reviews.site')),
             NumberField::make('reviewable_id')->label(__('atrium-reviews::reviews.fields.subject_id'))
                 ->min(1)->rules(['required_with:reviewable_type', 'integer']),

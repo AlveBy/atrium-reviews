@@ -102,11 +102,11 @@ final class Reviews
         $record = $review->reviewable;
 
         if ($record === null) {
-            return __('atrium-reviews::reviews.missing', ['type' => class_basename($review->reviewable_type), 'id' => (string) $review->reviewable_id]);
+            return __('atrium-reviews::reviews.missing', ['type' => class_basename($review->reviewable_type), 'id' => $review->reviewable_id]);
         }
 
         $title = $record instanceof Administrable && method_exists($record, 'getAdminTitle')
-            ? (string) $record->getAdminTitle()
+            ? $record->getAdminTitle()
             : '#'.$record->getKey();
 
         return $this->moduleLabel($record::class).': '.$title;
@@ -143,8 +143,9 @@ final class Reviews
             $byType[$record->getMorphClass()][$record->getKey()] = $record;
         }
 
-        if ($byType === []) {
-            return $summaries;
+        // No records: nothing to ask the counters.
+        if ($summaries === []) {
+            return [];
         }
 
         $rows = $this->counters()
@@ -158,7 +159,7 @@ final class Reviews
             ->get();
 
         foreach ($rows as $row) {
-            $record = $byType[$row->reviewable_type][(int) $row->reviewable_id] ?? null;
+            $record = $byType[$row->reviewable_type][$row->reviewable_id] ?? null;
 
             if ($record !== null) {
                 $summaries[$this->key($record)] = $this->toSummary($row);
@@ -261,7 +262,7 @@ final class Reviews
 
         return [
             'count' => $count,
-            'average' => $count > 0 ? round((int) $row->rating_sum / $count, 1) : null,
+            'average' => $count > 0 ? round($row->rating_sum / $count, 1) : null,
             'ratings' => $ratings,
         ];
     }

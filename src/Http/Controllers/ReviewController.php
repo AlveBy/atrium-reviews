@@ -92,27 +92,27 @@ final class ReviewController extends Controller
         }
 
         $limiter = 'atrium-reviews:'.$request->ip();
-        $limit = (array) config('atrium-reviews.rate_limit', []);
-        $attempts = max(1, (int) ($limit['attempts'] ?? 3));
 
-        if (RateLimiter::tooManyAttempts($limiter, $attempts)) {
+        // Fewer than one attempt a window still lets the first one in: the
+        // limiter forgets a window nobody has hit yet.
+        if (RateLimiter::tooManyAttempts($limiter, (int) config('atrium-reviews.rate_limit.attempts', 3))) {
             return $this->back()
-                ->withErrors(['text' => __('atrium-reviews::reviews.form.too_many', ['minutes' => (int) ceil(RateLimiter::availableIn($limiter) / 60)])], 'reviews')
+                ->withErrors(['text' => __('atrium-reviews::reviews.form.too_many', ['minutes' => ceil(RateLimiter::availableIn($limiter) / 60)])], 'reviews')
                 ->withInput($request->except([self::HONEYPOT, ...CaptchaManager::INPUTS]));
         }
 
-        RateLimiter::hit($limiter, 60 * max(1, (int) ($limit['minutes'] ?? 10)));
+        RateLimiter::hit($limiter, 60 * max(1, (int) config('atrium-reviews.rate_limit.minutes', 10)));
 
         $review = new Review([
             'author_name' => trim((string) $request->input('author_name')),
-            'rating' => (int) $request->input('rating'),
+            'rating' => $request->input('rating'),
             'text' => trim((string) $request->input('text')),
             'status' => ReviewStatus::New,
         ]);
 
         if ($record !== null) {
             $review->reviewable_type = $record->getMorphClass();
-            $review->reviewable_id = (int) $record->getKey();
+            $review->reviewable_id = $record->getKey();
         }
 
         $review->save();

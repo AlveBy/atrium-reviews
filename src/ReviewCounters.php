@@ -120,7 +120,7 @@ final class ReviewCounters
      */
     private function key(array $attributes): array
     {
-        $type = (string) ($attributes['reviewable_type'] ?? '');
+        $type = $attributes['reviewable_type'] ?? '';
 
         return [
             'site_id' => (int) ($attributes['site_id'] ?? 0),
