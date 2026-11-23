@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Atrium\Reviews;
 
 use Atrium\Admin\Modules\Modules;
+use Atrium\Admin\Support\ConfigList;
 use Atrium\Reviews\Console\RecountCommand;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
@@ -62,7 +63,7 @@ final class ReviewsServiceProvider extends ServiceProvider
         // The public theme draws the views listed here under every record
         // page; ours shows the reviews of the records that take them.
         if (config('atrium-reviews.theme', true)) {
-            config()->push('atrium-theme.record_views', 'atrium-reviews::theme-record');
+            ConfigList::add('atrium-theme.record_views', 'atrium-reviews::theme-record');
         }
     }
 }

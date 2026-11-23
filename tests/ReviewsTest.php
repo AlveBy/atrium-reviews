@@ -16,6 +16,7 @@ use Atrium\Admin\Modules\Modules;
 use Atrium\Admin\Resources\ResourceRegistry;
 use Atrium\Reviews\Models\Review;
 use Atrium\Reviews\Reviews;
+use Atrium\Reviews\ReviewsServiceProvider;
 use Atrium\Reviews\ReviewStatus;
 use Atrium\Reviews\Tests\Fixtures\Article;
 use Atrium\Reviews\Tests\Fixtures\Product;
@@ -307,5 +308,13 @@ final class ReviewsTest extends TestCase
         $this->assertSame(1, preg_match('#<script type="application/ld\+json">(.+?)</script>#s', $html, $match));
 
         return json_decode($match[1], true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    public function test_the_reviews_are_under_a_record_once_after_config_cache(): void
+    {
+        // A cached config already holds the view: booting on top of it must not add it again.
+        $this->app->getProvider(ReviewsServiceProvider::class)->boot();
+
+        $this->assertSame(1, array_count_values((array) config('atrium-theme.record_views'))['atrium-reviews::theme-record']);
     }
 }
