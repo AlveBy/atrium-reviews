@@ -24,6 +24,18 @@ use PHPUnit\Framework\Attributes\DataProvider;
  */
 final class ReviewModelTest extends TestCase
 {
+    public function test_the_reviews_are_offered_as_a_board_of_statuses(): void
+    {
+        $views = Review::getAdministrationViews();
+
+        $this->assertCount(1, $views);
+        $this->assertSame('kanban', $views[0]->type());
+        $this->assertSame('status', $views[0]->getField());
+        $this->assertSame('author_name', $views[0]->getTitleField());
+        $this->assertSame(['rating', 'posted_at'], $views[0]->getCards());
+        $this->assertNull($views[0]->getOrder());
+    }
+
     public function test_a_review_keeps_the_date_it_was_given(): void
     {
         $review = $this->review(['posted_at' => Carbon::parse('2025-05-06 07:08:09')]);

@@ -23,6 +23,7 @@ use Atrium\Admin\Modules\Soft;
 use Atrium\Admin\Traits\BelongsToSite;
 use Atrium\Admin\Traits\HasSoftRelations;
 use Atrium\Admin\Traits\InteractsWithAdmin;
+use Atrium\Admin\Views\KanbanView;
 use Atrium\Reviews\ReviewCounters;
 use Atrium\Reviews\Reviews;
 use Atrium\Reviews\ReviewStatus;
@@ -136,6 +137,11 @@ class Review extends Model implements Administrable, Cacheable
             TextColumn::make('status_label')->label(__('atrium-reviews::reviews.fields.status')),
             DateColumn::make('posted_at')->label(__('atrium-reviews::reviews.fields.posted_at'))->sortable(),
         ];
+    }
+
+    public static function getAdministrationViews(): array
+    {
+        return [KanbanView::make('status')->title('author_name')->cards('rating', 'posted_at')];
     }
 
     public function getAdminTitle(): string
